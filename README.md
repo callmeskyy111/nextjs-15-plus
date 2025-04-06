@@ -2775,3 +2775,299 @@ export default function Custom500() {
 | Custom 404/500      | Pages Router         | Fallback UI for pages (hybrid apps)       |
 
 ---
+
+## 💡 What Are Parallel Routes?
+
+**Deep into Parallel Routes in Next.js 15:**. This is a **powerful advanced feature** in the **App Router** that helps us **render multiple pages or sections in parallel**—within the same layout—without affecting each other.
+
+Parallel Routes allow us to **display multiple route segments** in the **same layout at the same time**, where **each segment is independent**, like:
+
+- A sidebar and a main content area
+- Multiple tabs rendered simultaneously
+- Dashboards with multiple panels
+
+---
+
+## 📁 Folder Structure and Concept
+
+In Next.js 15, **named slots** using the `@` symbol are used for **parallel routing**.
+
+### Example folder structure:
+```bash
+app/
+├── layout.tsx
+├── @sidebar/
+│   └── page.tsx
+├── @main/
+│   └── page.tsx
+```
+
+> Note: `@sidebar` and `@main` are **slot names**. They do **not** define the route, but instead define what content goes into that slot.
+
+---
+
+## 🧠 How It Works
+
+In the layout file (`layout.tsx`), we can accept **named slots** as props:
+
+```tsx
+// app/layout.tsx
+export default function RootLayout({
+  children,
+  sidebar,
+  main,
+}: {
+  children: React.ReactNode;
+  sidebar: React.ReactNode;
+  main: React.ReactNode;
+}) {
+  return (
+    <div className="flex">
+      <aside className="w-1/4 p-4 border-r">{sidebar}</aside>
+      <main className="w-3/4 p-4">{main}</main>
+    </div>
+  );
+}
+```
+
+- `sidebar`: will get content from the `@sidebar` route.
+- `main`: will get content from the `@main` route.
+
+So, both routes can be rendered **in parallel** under the same layout.
+
+---
+
+## 🧭 How to Navigate Between Parallel Routes
+
+You define a **URL structure like this**:
+
+```
+/dashboard?parallelRoute=main
+```
+
+But usually, it’s used with **`segment config` and navigation links**, like:
+
+```tsx
+<Link href="/dashboard" scroll={false}>
+  Dashboard Home
+</Link>
+```
+
+And behind the scenes, Next.js **renders both @sidebar and @main** in their slots, based on the file structure.
+
+---
+
+## 🧪 Use Case: Dashboard with Tabs
+
+### Folder structure:
+```bash
+app/
+├── dashboard/
+│   ├── layout.tsx
+│   ├── @overview/
+│   │   └── page.tsx
+│   ├── @settings/
+│   │   └── page.tsx
+```
+
+### layout.tsx
+```tsx
+// app/dashboard/layout.tsx
+export default function DashboardLayout({
+  overview,
+  settings,
+}: {
+  overview: React.ReactNode;
+  settings: React.ReactNode;
+}) {
+  return (
+    <div>
+      <nav>
+        <Link href="/dashboard">Overview</Link>
+        <Link href="/dashboard/settings">Settings</Link>
+      </nav>
+      <div className="grid grid-cols-2">
+        <section>{overview}</section>
+        <section>{settings}</section>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## 🔁 Shared Layouts and Lazy Rendering
+
+Parallel routes help us:
+
+- Reuse layout while keeping each section isolated
+- Avoid unmounting components during navigation
+- Improve performance by **lazy loading segments independently**
+
+---
+
+## ⚙️ Bonus: Default and Error UI for Parallel Routes
+
+### 🟡 Default UI (`default.tsx`)
+If a parallel route is **not loaded**, Next.js will look for:
+
+```bash
+app/
+├── @main/
+│   └── default.tsx
+```
+
+This acts like a fallback or placeholder UI until the actual page is rendered.
+
+---
+
+### 🔴 Error Handling
+
+Each slot can have its own:
+
+- `error.tsx`
+- `loading.tsx`
+- `not-found.tsx`
+
+So if just the sidebar crashes, only it is replaced with its `error.tsx` component—**the rest of the layout stays intact!**
+
+---
+
+## ✅ Benefits of Parallel Routes
+
+| Feature | Benefit |
+|--------|---------|
+| Named slots | Organize layout clearly |
+| Independent rendering | Better performance, less flicker |
+| Fallback UIs | Handle partial loading gracefully |
+| Error isolation | One section error doesn't crash the whole page |
+| Smooth UX | Useful for dashboards, split screens, modals, tabs |
+
+---
+
+## 💬 Summary
+
+- **Parallel Routes = multiple independent route trees rendered inside named slots (`@name`) in the same layout.**
+- Perfect for **dashboards, sidebars, tabbed interfaces, modals**, etc.
+- Easy to scale, clean layout-based architecture.
+- Use `default.tsx`, `loading.tsx`, and `error.tsx` for graceful UX in each segment.
+---
+
+## 🧠 What Are Unmatched Routes in Next.js 15?
+ **Unmatched Routes** in **Next.js 15**—a lesser-known but **super powerful feature** when working with **Parallel Routes**. It gives us more control when a specific **slot does not have a matched route**.
+
+**Unmatched routes** let us **detect and handle the case when no route is matched** for a given **named slot** (used in [parallel routing](https://nextjs.org/docs/app/building-your-application/routing/parallel-routes)).
+
+Think of it like:
+- We defined a named slot (e.g., `@modal`)
+- But the current route **does not match anything inside** that slot
+- So we can **render a fallback UI**, show a default message, or redirect
+
+---
+
+## 🧭 When Do Unmatched Routes Occur?
+
+In layouts with **parallel routes** like this:
+
+```
+app/
+  └── layout.tsx
+  └── @main/
+       └── page.tsx
+  └── @sidebar/
+       └── page.tsx
+```
+
+If the current route matches `@main`, but **nothing is matched in `@sidebar`**, then the route is **unmatched for `@sidebar`**.
+
+This is where **`not-found.tsx` or `default.tsx`** (for that slot) kicks in.
+
+---
+
+## ✅ Real Use Case
+
+Let’s say we have:
+
+```
+app/
+  └── dashboard/
+       └── layout.tsx
+       └── @notifications/
+            └── page.tsx
+            └── not-found.tsx
+```
+
+And we try to visit:  
+```
+/dashboard
+```
+
+If there’s no matching route for `@notifications`, Next.js checks:
+1. Is there a `page.tsx` inside `@notifications`? ✅
+2. Is the URL trying to render `@notifications`, but no match is found? ✅
+3. → Then it will render `not-found.tsx` in that slot
+
+---
+
+## 📁 Folder Setup Example
+
+```
+app/
+  └── layout.tsx
+  └── @main/
+       └── page.tsx
+  └── @modal/
+       └── not-found.tsx
+```
+
+### layout.tsx:
+```tsx
+export default function RootLayout({ main, modal }: { main: React.ReactNode; modal: React.ReactNode }) {
+  return (
+    <div>
+      <div>{main}</div>
+      <div>{modal}</div>
+    </div>
+  );
+}
+```
+
+### not-found.tsx (for @modal):
+```tsx
+export default function ModalNotFound() {
+  return <div>No modal route matched.</div>;
+}
+```
+
+So if the URL is: `/home`, and there’s nothing matched under `@modal`, then `ModalNotFound` is rendered in the `modal` slot.
+
+---
+
+## 🔥 Combine With `default.tsx`
+
+You can optionally define a `default.tsx` too for graceful fallback:
+
+```tsx
+// app/@modal/default.tsx
+export default function ModalDefault() {
+  return <p>No active modal</p>;
+}
+```
+
+This will be shown **only when there’s no match and no `not-found.tsx`**.
+
+---
+
+## 🧩 Summary: Unmatched Routes in a Nutshell
+
+| Concept            | Explanation |
+|-------------------|-------------|
+| 🔍 **What is it?** | A route slot that **didn't match any route** |
+| 🧠 **Used In?**    | **Parallel Routes** using `@slotName` |
+| 📦 **Handled By**  | `not-found.tsx` or `default.tsx` inside that slot |
+| 🔄 **Fallback**    | Useful to show default UIs or errors |
+| ✅ **Benefit**     | Prevent blank slots, show UI when something is missing |
+
+---
+
