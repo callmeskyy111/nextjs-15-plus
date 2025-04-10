@@ -3292,3 +3292,519 @@ This makes it explicit that this route should be loaded into the `@panel` slot.
 | Great for                 | Modals, side drawers, detail previews, split screens                 |
 
 ---
+
+In **Next.js 15**, **Route Handlers** are how we define **custom backend logic** (like APIs) *within the App Router*. They allow us to handle HTTP requests (GET, POST, PUT, DELETE, etc.) directly inside our app directory, similar to traditional API routes but **fully aligned with the App Router’s conventions**.
+
+---
+
+## 🧩 What are Route Handlers?
+
+They are special files (typically named `route.ts` or `route.js`) placed **inside a specific folder** (usually under `/app/api/...`) that export functions corresponding to HTTP methods — like `GET`, `POST`, etc.
+
+> ✅ **Route Handlers replace `pages/api` from the old Pages Router.**
+
+---
+
+## 🗂 Folder Structure
+
+```
+app/
+└── api/
+    └── hello/
+        └── route.ts  ← Route Handler
+```
+
+This defines an API endpoint at:
+
+```
+/api/hello
+```
+
+---
+
+## 🔧 Example: Simple GET Handler
+
+**`app/api/hello/route.ts`**
+```ts
+export async function GET() {
+  return new Response("Hello from API Route!");
+}
+```
+
+📌 Now hitting `http://localhost:3000/api/hello` with a GET request will return:  
+```
+Hello from API Route!
+```
+
+---
+
+## 🔧 Example: Handling Different Methods (GET + POST)
+
+```ts
+export async function GET(request: Request) {
+  return new Response("GET Request Success");
+}
+
+export async function POST(request: Request) {
+  const data = await request.json();
+  return new Response(`Received name: ${data.name}`);
+}
+```
+
+### To test:
+```bash
+curl -X POST http://localhost:3000/api/hello -H "Content-Type: application/json" -d '{"name":"Skyy"}'
+```
+
+---
+
+## ⚙️ Supported HTTP Methods
+
+You can export functions like:
+
+- `GET`
+- `POST`
+- `PUT`
+- `DELETE`
+- `PATCH`
+- `HEAD`
+- `OPTIONS`
+
+Example:
+```ts
+export async function DELETE() {
+  return new Response("Deleted something!");
+}
+```
+
+---
+
+## 📥 Accessing Request Data
+
+You can use the `Request` object to access:
+
+### ✅ Query params (in `GET`)
+```ts
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const search = url.searchParams.get("name");
+  return new Response(`Hi ${search}`);
+}
+```
+
+### ✅ JSON body (in `POST`)
+```ts
+export async function POST(req: Request) {
+  const body = await req.json();
+  return new Response(`Received ${body.name}`);
+}
+```
+
+---
+
+## ✅ Dynamic Route Handlers
+
+You can use dynamic segments like this:
+
+### `/app/api/user/[id]/route.ts`
+
+```ts
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  return new Response(`User ID: ${params.id}`);
+}
+```
+
+> Now accessing `/api/user/123` will return:  
+> `"User ID: 123"`
+
+---
+
+## 🧠 Middleware & Edge Support
+
+- Route handlers **can run on Edge or Node.js** (your choice).
+- To run on Edge, use:
+  ```ts
+  export const runtime = "edge";
+  ```
+
+---
+
+## 📁 Common Use Cases
+
+- Custom API routes (fetching/updating DB)
+- Webhooks
+- Auth endpoints
+- File uploads
+- Payment handlers (Stripe/Razorpay)
+- Server Actions support (in the future)
+
+---
+
+## 🧪 Bonus: Returning JSON
+
+```ts
+export async function GET() {
+  const data = { message: "Hello JSON" };
+  return Response.json(data); // Shortcut for JSON responses
+}
+```
+
+---
+
+## 📌 Summary
+
+| Feature                  | Supported ✅ |
+|--------------------------|--------------|
+| GET/POST/PUT/DELETE      | ✅           |
+| JSON body parsing        | ✅           |
+| Query/Search Params      | ✅           |
+| Dynamic Params (`[id]`)  | ✅           |
+| Edge Runtime Option      | ✅           |
+| Typed via TypeScript     | ✅           |
+
+---
+
+## 🍪 1. **Cookies in Route Handlers**
+
+In **Next.js 15**, Route Handlers give us direct access to **cookies and caching controls**, which are super important for things like **authentication, personalization, performance,** and **session handling**.
+Next.js provides **`cookies()`** utility from `next/headers` for **reading and setting cookies** on the server.
+
+### 🔹 Importing:
+```ts
+import { cookies } from "next/headers";
+```
+
+### ✅ Reading a Cookie:
+```ts
+export async function GET() {
+  const cookieStore = cookies();
+  const token = cookieStore.get("auth-token");
+
+  return new Response(`Cookie value: ${token?.value ?? "not found"}`);
+}
+```
+
+### ✅ Setting a Cookie:
+```ts
+export async function POST() {
+  const cookieStore = cookies();
+
+  cookieStore.set("auth-token", "12345", {
+    httpOnly: true,
+    path: "/",
+    secure: true,
+    maxAge: 60 * 60 * 24 * 7, // 1 week
+  });
+
+  return new Response("Cookie set!");
+}
+```
+
+### ✅ Deleting a Cookie:
+```ts
+export async function DELETE() {
+  const cookieStore = cookies();
+  cookieStore.delete("auth-token");
+
+  return new Response("Cookie deleted!");
+}
+```
+
+> ☝️ Cookies set with `httpOnly: true` can’t be accessed from JavaScript in the browser — great for securing tokens like JWTs.
+
+---
+
+## ⚠️ `cookies()` only works **inside Route Handlers**, Server Components, and Server Actions — not in Client Components.
+
+---
+
+## 📦 2. **Caching in Route Handlers**
+
+Caching is used to control how responses are **stored and reused** by the browser or a CDN. In Route Handlers, we can manage caching behavior using **`Response` headers**.
+
+---
+
+### ✅ Setting Cache Headers Manually
+
+```ts
+export async function GET() {
+  const data = { name: "Skyy", role: "Dev" };
+
+  return new Response(JSON.stringify(data), {
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "public, max-age=3600", // Cache for 1 hour
+    },
+  });
+}
+```
+
+---
+
+### 🔹 Common `Cache-Control` Options:
+
+| Directive                | Meaning |
+|--------------------------|---------|
+| `no-store`               | Don’t store in cache at all |
+| `no-cache`               | Must revalidate every time |
+| `public`                 | Cacheable by any cache (CDN, browser) |
+| `private`                | Only cache in user's browser |
+| `max-age=seconds`        | Time in seconds before stale |
+
+---
+
+### 🔹 Example: Disable Caching (for dynamic/private data)
+```ts
+export async function GET() {
+  return new Response("Private data", {
+    headers: {
+      "Cache-Control": "no-store",
+    },
+  });
+}
+```
+
+---
+
+## 🧠 Bonus: Dynamic vs Static Caching
+
+In Next.js 15:
+
+- **Static cache (default)** is used when response can be cached and reused.
+- **Dynamic responses** (e.g., with cookies or user-specific data) are **opted out** of static cache.
+- Use:
+  ```ts
+  export const dynamic = "force-dynamic";
+  ```
+  to force dynamic behavior even when no dynamic data is present.
+
+Example:
+```ts
+export const dynamic = "force-dynamic"; // or "force-static"
+```
+
+---
+
+## ✅ Summary
+
+| Feature            | Method / Tool             | Notes |
+|--------------------|---------------------------|-------|
+| Read Cookie         | `cookies().get()`         | Server only |
+| Set Cookie          | `cookies().set()`         | Secure, customizable |
+| Delete Cookie       | `cookies().delete()`      | Easy removal |
+| Cache Response      | `Response.headers`        | Fully customizable |
+| Control dynamic/static | `export const dynamic` | Static or dynamic behavior |
+
+---
+
+## 🚪 What is Middleware in Next.js?
+
+In **Next.js 15**, **Middleware** is a special function that runs **before a request is completed**, and **before rendering** a route. It allows us to **intercept requests**, perform logic, and optionally **redirect, rewrite, or modify responses**.
+
+Think of it as a **gatekeeper** between the user and the page.
+
+---
+
+## 🧠 Why Use Middleware?
+
+Middleware is perfect for:
+
+- 🔐 Authentication & Authorization (e.g., redirect if not logged in)
+- 🌐 Localization (e.g., detect browser language)
+- 🚀 A/B testing or feature flags
+- 🔄 Rewrites and redirects
+- 🧪 Logging, analytics, etc.
+
+---
+
+## 📁 Where Do We Define Middleware?
+
+In the **root of the `app/` or project directory**, we create:
+
+```
+/middleware.ts
+```
+
+or
+
+```
+/middleware.js
+```
+
+This file runs **for every request** unless we filter it.
+
+---
+
+## ⚙️ Basic Structure of Middleware
+
+```ts
+// middleware.ts
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+export function middleware(request: NextRequest) {
+  // Perform something with the request
+
+  return NextResponse.next(); // allow request
+}
+```
+
+---
+
+## 🔄 Common Operations
+
+### ✅ 1. **Redirect**
+
+```ts
+export function middleware(request: NextRequest) {
+  const isLoggedIn = false;
+
+  if (!isLoggedIn && request.nextUrl.pathname.startsWith("/dashboard")) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  return NextResponse.next();
+}
+```
+
+### ✅ 2. **Rewrite**
+
+```ts
+export function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname === "/old") {
+    return NextResponse.rewrite(new URL("/new", request.url));
+  }
+
+  return NextResponse.next();
+}
+```
+
+### ✅ 3. **Set Headers**
+
+```ts
+export function middleware(request: NextRequest) {
+  const response = NextResponse.next();
+  response.headers.set("x-powered-by", "Skyy");
+  return response;
+}
+```
+
+---
+
+## 🧪 Example: Auth Check for Private Routes
+
+```ts
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get("auth-token")?.value;
+
+  const isAuthRoute = request.nextUrl.pathname.startsWith("/dashboard");
+
+  if (isAuthRoute && !token) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  return NextResponse.next();
+}
+```
+
+---
+
+## 📍 Matching Routes with `matcher`
+
+To restrict middleware only to specific routes, use `config.matcher`.
+
+```ts
+export const config = {
+  matcher: ["/dashboard/:path*", "/profile", "/settings"],
+};
+```
+
+> 📝 `:path*` means include all nested routes too.
+
+---
+
+## 📦 `NextRequest` and `NextResponse`
+
+- **`NextRequest`** gives access to:
+  - `request.nextUrl.pathname` → URL info
+  - `request.cookies` → read cookies
+  - `request.headers` → get headers
+
+- **`NextResponse`** gives methods to:
+  - `.redirect()`
+  - `.rewrite()`
+  - `.next()` (allow to continue)
+  - `.headers.set()`
+
+---
+
+## 🔐 Example Use Cases
+
+| Use Case                  | Middleware Logic Example |
+|---------------------------|--------------------------|
+| Protect dashboard         | Check cookie or session and redirect |
+| Auto locale redirect      | Check `Accept-Language` and rewrite |
+| Block bots or IPs         | Check IP/headers and return 403 |
+| Beta route gating         | Check cookie/flag and redirect |
+| Analytics logging         | Log request info before serving |
+
+---
+
+## 🚨 Limitations of Middleware
+
+- ❌ Can’t access `use client` components
+- ❌ Cannot render components
+- ✅ Runs at **Edge** (very fast)
+- ✅ Can only use Web APIs and Next APIs
+
+---
+
+## 🔚 Summary
+
+| Feature           | Description |
+|-------------------|-------------|
+| Location          | `/middleware.ts` at project root |
+| Execution         | Before the route is rendered |
+| Key Tools         | `NextRequest`, `NextResponse` |
+| Common Usage      | Auth, redirects, rewrites, headers |
+| Matcher           | Filters what routes middleware applies to |
+
+---
+
+## BASIC CRUD
+```js
+// app/api/todos/[id]/route.ts
+import { NextResponse } from "next/server";
+import { todos } from "@/lib/data";
+
+export async function GET(_: Request, { params }: { params: { id: string } }) {
+  const todo = todos.find((t) => t.id === params.id);
+  return todo
+    ? NextResponse.json(todo)
+    : NextResponse.json({ error: "Not found" }, { status: 404 });
+}
+
+export async function PUT(request: Request, { params }: { params: { id: string } }) {
+  const { task, done } = await request.json();
+  const index = todos.findIndex((t) => t.id === params.id);
+
+  if (index === -1) {
+    return NextResponse.json({ error: "Todo not found" }, { status: 404 });
+  }
+
+  todos[index] = { ...todos[index], task, done };
+  return NextResponse.json(todos[index]);
+}
+
+export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+  const index = todos.findIndex((t) => t.id === params.id);
+  if (index === -1) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const deleted = todos.splice(index, 1)[0];
+  return NextResponse.json(deleted);
+}
+```
