@@ -3071,3 +3071,224 @@ This will be shown **only when there’s no match and no `not-found.tsx`**.
 
 ---
 
+### 🚦 What are Intercepting Routes in Next.js?
+
+Intercepting routes allow us to **load a different route in a specific part of the page**—without replacing the whole route view. Let's break down **intercepting routes in Next.js**—a feature introduced in **Next.js 13+** with the **App Router**. It’s super useful when we want to show something like a **modal** or **drawer** on top of an existing page without navigating away from it.
+
+👉 Think:  
+We're on `/products` and click a product to see `/products/1`. Instead of navigating fully to `/products/1`, we want a **modal** to open with product details—still on `/products`.
+
+---
+
+### ✅ Use Case Example
+
+Let’s say we have a list of users at `/users`, and when we click on one, we want to show `/users/123` as a **modal**.
+
+### Without Interception:
+- User clicks → navigates to `/users/123`
+- Whole page reloads and changes.
+
+### With Interception:
+- User clicks → modal shows on `/users`, but content from `/users/123` is loaded inside it.
+
+---
+
+### 📁 Folder Structure for Intercepting
+
+Suppose you're on route `/users`, and want to intercept `/users/[id]`.
+
+```bash
+app/
+├── users/
+│   ├── page.tsx                 # /users
+│   ├── [id]/
+│   │   └── page.tsx             # /users/123 (full page)
+│   ├── (modals)/               # Special folder for intercept
+│   │   └── users/
+│   │       └── [id]/
+│   │           └── page.tsx     # Intercepted modal content
+```
+
+### 🪄 How it Works:
+- The route `(modals)/users/[id]/page.tsx` **intercepts** `/users/[id]` when we’re **already on `/users`**.
+- Instead of full navigation, the intercepted page can show in a modal component in `/users/page.tsx`.
+
+---
+
+### 💡 Key Concept
+
+📌 `(modals)` is just a **parallel route segment**—you can name it anything like `(intercept)` or `(drawer)`—it’s conventionally wrapped in `()`.
+
+You then **render** the intercepted route with the `Modal` logic inside `/users/page.tsx`.
+
+---
+
+### ⚙️ Code Example
+
+**`/users/page.tsx`**
+```tsx
+import { useRouter } from 'next/navigation'
+import Modal from '@/components/Modal'
+import UserDetails from './(modals)/users/[id]/page'
+
+export default function UsersPage() {
+  const router = useRouter()
+
+  const handleClick = (id: string) => {
+    router.push(`/users/${id}`)
+  }
+
+  return (
+    <>
+      <div>
+        <h1>All Users</h1>
+        <button onClick={() => handleClick('123')}>View User 123</button>
+      </div>
+
+      {/* Show modal if intercepted */}
+      {/* You can conditionally show based on route or state */}
+      <Modal>
+        <UserDetails />
+      </Modal>
+    </>
+  )
+}
+```
+
+---
+
+### ✨ Summary
+
+| Feature               | Purpose                                               |
+|-----------------------|-------------------------------------------------------|
+| Intercepting Route    | Load route content (like modal) **without full nav**  |
+| Parallel Routes       | Needed for intercepting; wrapped in `()`              |
+| Practical Use         | Modals, drawers, side-panels, etc.                    |
+
+---
+
+## 🌐 What Are Parallel Intercepting Routes in Next.js 15?
+
+### In short:
+> **Parallel Intercepting Routes** let us **show different routes side-by-side** in **specific UI areas** (like modals, drawers, or side panels) *without losing the original route context*.
+Let’s dive into **parallel intercepting routes** in **Next.js 15**, especially as it builds on the App Router architecture that started with v13 and is now more powerful and flexible.
+
+---
+
+## 🔍 Real-World Analogy
+
+Imagine a dashboard where:
+- The **main content** shows the user's dashboard (`/dashboard`)
+- A **side panel** opens to show user settings (`/settings`) *while staying on* `/dashboard`
+
+✅ We want:
+- `/dashboard` to remain visible
+- `/settings` to load in a side panel
+- Browser URL to reflect `/settings`, but without full navigation
+
+This is what **parallel routes + intercepting** enable.
+
+---
+
+## 🧠 Core Concepts
+
+| Concept                | Description                                                                 |
+|------------------------|-----------------------------------------------------------------------------|
+| **Parallel Routes**    | Multiple UI areas (slots) that render independently                         |
+| **Intercepting Routes**| Route loaded into a slot *instead* of full navigation                       |
+| **Named Slots**        | You define slots with keys like `@modal`, `@drawer`, etc.                   |
+| **(group)** folders     | Group routes without affecting URL structure                               |
+
+---
+
+## 🛠️ Folder Structure Example
+
+Let’s build this example:
+- Main route: `/dashboard`
+- Intercepted side panel: `/settings`
+- Show `/settings` in a `@panel` slot while keeping `/dashboard` visible
+
+```bash
+app/
+├── layout.tsx                  # Defines all slots (@main, @panel)
+├── page.tsx                    # Default home route
+├── dashboard/
+│   ├── page.tsx                # /dashboard
+├── settings/
+│   └── page.tsx                # /settings (full route if direct nav)
+├── (panel)/
+│   └── settings/
+│       └── page.tsx            # Intercepted view for @panel
+```
+
+---
+
+## 🧩 `layout.tsx` with Parallel Slots
+
+```tsx
+export default function RootLayout({ children, panel }: {
+  children: React.ReactNode
+  panel: React.ReactNode
+}) {
+  return (
+    <div className="flex">
+      <main className="flex-1">
+        {children} {/* Default content */}
+      </main>
+      <aside className="w-96 border-l">
+        {panel} {/* Intercepted content */}
+      </aside>
+    </div>
+  )
+}
+```
+
+We’ve created two **parallel routes**:
+- `@main` → shows `children`
+- `@panel` → shows `panel` (intercepted)
+
+> Behind the scenes, Next.js maps these using file conventions like `(panel)` folders.
+
+---
+
+## 🔄 How Interception Works
+
+- When we navigate from `/dashboard` to `/settings`, if the **current route has a `@panel` slot** defined, Next.js **renders `/settings` into the slot**.
+- If we go directly to `/settings`, it loads as a full page (like normal).
+
+---
+
+## ✅ Benefits
+
+- ✨ Seamless modals/drawers without full page reloads
+- 🔄 Preserves scroll, state, context
+- 🔗 Shareable URLs (since `/settings` is real)
+- 🧱 Clean architecture via named slots
+
+---
+
+## 🧪 Optional Tip: Named Slots via Route Grouping
+
+To declare a specific route to a slot, use the `route.js` config in the folder:
+
+```js
+// app/(panel)/settings/route.js
+export const route = {
+  slot: 'panel'
+}
+```
+
+This makes it explicit that this route should be loaded into the `@panel` slot.
+
+---
+
+## 🎯 Summary
+
+| Feature                   | Use                                                                 |
+|---------------------------|----------------------------------------------------------------------|
+| `layout.tsx` with slots   | Define multiple UI zones like `main`, `modal`, `panel`, etc.         |
+| `(group)` folders         | Organize routes without URL impact                                   |
+| Intercepting routes       | Load new routes *into a slot* instead of full navigation             |
+| Great for                 | Modals, side drawers, detail previews, split screens                 |
+
+---
