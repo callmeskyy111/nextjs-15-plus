@@ -3808,3 +3808,241 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
   return NextResponse.json(deleted);
 }
 ```
+---
+
+## 🔍 What are Headers in Route Handlers?
+
+Let’s explore **headers in Route Handlers** in **Next.js 15** in depth — how to **read**, **set**, and **use them** within `route.ts` files inside the `app/api` directory.
+
+In Next.js 15 Route Handlers (App Router), **headers** can be used:
+
+- To **read incoming** request metadata (e.g., auth tokens, content-type, etc.)
+- To **set outgoing** custom response headers (e.g., caching, CORS, custom info)
+
+---
+
+## 📥 Reading Request Headers
+
+In any `route.ts` handler, use the `Request` object’s `.headers` property.
+
+### ✅ Example – Reading a custom or auth header
+
+```ts
+// app/api/headers-example/route.ts
+import { NextResponse } from "next/server";
+
+export async function GET(request: Request) {
+  const authToken = request.headers.get("authorization");
+  const userAgent = request.headers.get("user-agent");
+
+  return NextResponse.json({
+    message: "Headers received",
+    authToken,
+    userAgent,
+  });
+}
+```
+
+> ✅ Use this when you want to validate API keys, check user-agents, etc.
+
+---
+
+## 📤 Setting Response Headers
+
+Use the `NextResponse` object’s `.headers.set()` method.
+
+### ✅ Example – Set custom response headers
+
+```ts
+// app/api/set-headers/route.ts
+import { NextResponse } from "next/server";
+
+export async function GET() {
+  const res = NextResponse.json({ message: "Response with custom headers" });
+
+  res.headers.set("X-Custom-Header", "HelloFromNextJS15");
+  res.headers.set("Cache-Control", "no-store");
+
+  return res;
+}
+```
+
+> You can use this for:
+> - **Security** headers (CSP, CORS, etc.)
+> - **Performance** tuning (Cache-Control)
+> - **Metadata** (debugging, tracking)
+
+---
+
+## 💥 Full Example: Auth Check with Header
+
+```ts
+// app/api/secure/route.ts
+import { NextResponse } from "next/server";
+
+export async function GET(request: Request) {
+  const token = request.headers.get("authorization");
+
+  if (token !== "Bearer mysecrettoken123") {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
+  return NextResponse.json({ message: "Welcome, authorized user" });
+}
+```
+
+---
+
+## ⚠️ Case Sensitivity of Headers
+
+- Headers are **case-insensitive**.
+- Always prefer `get("authorization")`, not `"Authorization"`.
+
+---
+
+## 🧪 Bonus: Looping Through Headers
+
+```ts
+export async function GET(request: Request) {
+  const headers = Object.fromEntries(request.headers.entries());
+  return NextResponse.json({ allHeaders: headers });
+}
+```
+
+---
+
+## ✅ Summary Table
+
+| Task                           | Code Snippet                                      |
+|--------------------------------|---------------------------------------------------|
+| **Read header**                | `request.headers.get("authorization")`            |
+| **Set response header**        | `res.headers.set("X-My-Header", "Value")`         |
+| **Multiple headers**           | Loop: `Object.fromEntries(request.headers.entries())` |
+| **Security header**            | `res.headers.set("X-Frame-Options", "DENY")`      |
+| **Cache-Control**              | `res.headers.set("Cache-Control", "no-store")`    |
+
+---
+Let’s break down the **different types of HTTP headers** — especially in the context of **Next.js 15** route handlers — and how they’re typically used.
+---
+
+## 🧠 What Are HTTP Headers?
+
+HTTP headers are **key-value pairs** sent between the **client and server** to provide context about the request/response.
+
+Headers are categorized into:
+
+### ✅ 1. **Request Headers**
+Sent **from the client** (browser or frontend) to the server.
+
+| Header Name        | Purpose |
+|--------------------|---------|
+| `Authorization`    | Carries access tokens or API keys.  
+| `Content-Type`     | Describes the format of the body (`application/json`, `multipart/form-data`, etc.)  
+| `Accept`           | Tells the server what content types the client can handle (`application/json`, etc.)  
+| `User-Agent`       | Identifies the client app/browser and OS.  
+| `Cookie`           | Sends cookies to the server.  
+| `Referer`          | Tells the server which page the request came from.  
+| `Accept-Language`  | Preferred language of the client (`en`, `fr`, etc.)
+
+---
+
+### ✅ 2. **Response Headers**
+Sent **by the server** to the client, alongside the body.
+
+| Header Name        | Purpose |
+|--------------------|---------|
+| `Content-Type`     | Tells the browser how to interpret the response (`text/html`, `application/json`, etc.)  
+| `Set-Cookie`       | Sends cookies to be stored in the browser.  
+| `Cache-Control`    | Caching instructions for browsers/CDNs (`no-store`, `max-age=3600`, etc.)  
+| `Location`         | Used in redirects.  
+| `Access-Control-Allow-Origin` | For CORS. Specifies allowed origins.  
+| `X-Custom-*`       | Custom headers for debugging or tracking.
+
+---
+
+### ✅ 3. **Entity Headers**  
+Apply to the body/content of the request or response.
+
+| Header Name     | Purpose |
+|------------------|---------|
+| `Content-Length` | Size of the body.  
+| `Content-Encoding` | How content is encoded (e.g., gzip).  
+| `ETag`           | Used for caching validation.  
+| `Last-Modified`  | When the resource was last changed.
+
+---
+
+### ✅ 4. **Security Headers**
+Added to protect the app and browser.
+
+| Header Name                  | Purpose |
+|------------------------------|---------|
+| `X-Frame-Options`            | Prevent clickjacking (e.g., `DENY`, `SAMEORIGIN`)  
+| `Strict-Transport-Security` | Enforce HTTPS (`max-age=...`)  
+| `Content-Security-Policy`   | Restrict resources (images, scripts, etc.)  
+| `X-XSS-Protection`          | Browser XSS protection  
+| `Referrer-Policy`           | Controls `Referer` header behavior
+
+---
+
+### ✅ 5. **CORS Headers**
+Control cross-origin requests.
+
+| Header Name                      | Purpose |
+|----------------------------------|---------|
+| `Access-Control-Allow-Origin`    | Whitelisted origin(s)  
+| `Access-Control-Allow-Methods`   | Allowed HTTP methods  
+| `Access-Control-Allow-Headers`   | Allowed custom headers  
+| `Access-Control-Allow-Credentials` | Allow cookies/credentials
+
+---
+
+## 🔧 How to Use These in Next.js 15
+
+### Reading Request Headers
+
+```ts
+export async function GET(request: Request) {
+  const lang = request.headers.get("accept-language");
+  const auth = request.headers.get("authorization");
+  return Response.json({ lang, auth });
+}
+```
+
+### Setting Response Headers
+
+```ts
+import { NextResponse } from "next/server";
+
+export async function GET() {
+  const res = NextResponse.json({ status: "ok" });
+
+  res.headers.set("Cache-Control", "no-store");
+  res.headers.set("X-My-App", "Zumfass");
+  res.headers.set("Content-Security-Policy", "default-src 'self'");
+
+  return res;
+}
+```
+
+---
+
+## 🧪 Bonus: Viewing Headers in DevTools
+
+In Chrome → Right-click → Inspect → Network tab → Select a request → **Headers tab**
+
+---
+
+## 📌 Summary Table
+
+| Type            | Examples                           | Usage In Next.js       |
+|------------------|------------------------------------|--------------------------|
+| Request Headers  | `authorization`, `user-agent`      | `request.headers.get()` |
+| Response Headers | `set-cookie`, `cache-control`      | `response.headers.set()`|
+| Security         | `X-Frame-Options`, `CSP`           | Custom security headers |
+| CORS             | `access-control-allow-origin`      | Set via middleware/handler|
+
+---

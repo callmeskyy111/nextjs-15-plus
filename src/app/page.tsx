@@ -6,16 +6,16 @@ function Home() {
     <>
       <h1>Welcome Home!</h1>
       <Link href="/blog">To BlogPage📝</Link>
-     <br/>
+      <br />
       <Link href="/courses">To CoursesPage🎓</Link>
-      <br/>
-      <br/>
+      <br />
+      <br />
       <Link href="/articles/breaking-news-123?lang=en">Read in ENGLISH</Link>
-      <br/>
+      <br />
       <Link href="/articles/breaking-news-123?lang=fr">Lire en FRANÇAIS</Link>
     </>
   );
 }
 
 export default Home;
-//33
+//41
