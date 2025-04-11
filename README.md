@@ -4046,3 +4046,164 @@ In Chrome → Right-click → Inspect → Network tab → Select a request → *
 | CORS             | `access-control-allow-origin`      | Set via middleware/handler|
 
 ---
+
+## 🧠 What Are Cookies?
+
+🍪 Let's dive deep into **cookies in Route Handlers** in **Next.js 15** — how they work, how to use them for authentication, preferences, sessions, and more.
+
+Cookies are **small key-value pairs** stored in the browser, which can be sent with every HTTP request to the server. They're essential for:
+- User authentication (like tokens)
+- Session management
+- Storing preferences (theme, language)
+
+---
+
+## 📦 `cookies()` API in Next.js 15
+
+In **Next.js App Router (v13+)**, especially in **Route Handlers** (`route.ts`, `route.js`), we use the **`cookies()` API** to read, set, and delete cookies.
+
+> ✅ This API is **server-only** — works in Route Handlers, Server Components, Middleware, and Layouts.
+
+---
+
+## 🔑 Import Path
+
+```ts
+import { cookies } from 'next/headers';
+```
+
+---
+
+## 🔍 Reading Cookies
+
+```ts
+export async function GET() {
+  const cookieStore = cookies();
+  const token = cookieStore.get('token'); // returns { name, value, Path, ... }
+
+  return Response.json({
+    message: 'Hello',
+    token: token?.value || 'No Token',
+  });
+}
+```
+
+---
+
+## 🍪 Setting Cookies
+
+```ts
+export async function POST() {
+  const cookieStore = cookies();
+
+  cookieStore.set({
+    name: 'token',
+    value: 'abc123',
+    httpOnly: true,      // secure from JS access
+    secure: true,        // only over HTTPS
+    path: '/',
+    maxAge: 60 * 60 * 24, // 1 day
+  });
+
+  return Response.json({ message: 'Cookie Set' });
+}
+```
+
+> ✅ You can also set it using this shorter form:
+```ts
+cookieStore.set('theme', 'dark');
+```
+
+---
+
+## ❌ Deleting Cookies
+
+```ts
+export async function DELETE() {
+  const cookieStore = cookies();
+  cookieStore.delete('token');
+
+  return Response.json({ message: 'Cookie Deleted' });
+}
+```
+
+---
+
+## 🧾 Full Example: Authentication with Cookies
+
+```ts
+// app/api/login/route.ts
+import { cookies } from 'next/headers';
+
+export async function POST(request: Request) {
+  const { username, password } = await request.json();
+
+  if (username === 'admin' && password === 'secret') {
+    cookies().set({
+      name: 'token',
+      value: 'JWT-TOKEN-HERE',
+      httpOnly: true,
+      secure: true,
+      maxAge: 60 * 60 * 24,
+    });
+
+    return Response.json({ message: 'Login successful' });
+  }
+
+  return Response.json({ message: 'Invalid credentials' }, { status: 401 });
+}
+```
+
+---
+
+## 📦 Usage in Middleware (for Auth Protection)
+
+```ts
+// middleware.ts
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get('token');
+
+  if (!token) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  return NextResponse.next();
+}
+```
+
+---
+
+## 🔒 Secure Cookie Tips
+
+| Flag         | Purpose                                 |
+|--------------|------------------------------------------|
+| `httpOnly`   | Cannot be accessed via JavaScript (`document.cookie`)  
+| `secure`     | Only sent over HTTPS  
+| `sameSite`   | Controls cross-origin sending (e.g., `strict`, `lax`, `none`)  
+| `maxAge`     | How long the cookie is valid (in seconds)  
+| `path`       | URL path scope of the cookie (`/` = all)
+
+---
+
+## 🤔 Server vs Client Cookies
+
+| Feature           | Server (`cookies()`)      | Client (`document.cookie`)      |
+|-------------------|---------------------------|----------------------------------|
+| Access scope      | Server-side only (secure) | Client-side only (JS-accessible) |
+| Best for          | Auth tokens, user sessions | Preferences (e.g., theme)       |
+| Tamper resistance | More secure (with `httpOnly`) | Less secure                     |
+
+---
+
+## ✅ TL;DR Summary
+
+| Operation     | Code Example                        |
+|---------------|-------------------------------------|
+| Get Cookie    | `cookies().get("token")`            |
+| Set Cookie    | `cookies().set("token", "value")`   |
+| Delete Cookie | `cookies().delete("token")`         |
+
+---
