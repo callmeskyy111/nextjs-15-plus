@@ -4517,3 +4517,174 @@ Now, request this endpoint. The timestamp will only change **every 20 seconds**,
 | Not supported  | For `POST`, `PUT`, `DELETE`, cookies(), headers() |
 
 ---
+
+Understanding `Request` vs `NextRequest` and `Response` vs `NextResponse` is crucial for working with **Route Handlers**, **middleware**, and **server-side logic** in **Next.js 15 (App Router)**. Let’s break it all down clearly and deeply. 🧠✨
+
+---
+
+## 🟢 `Request` vs `NextRequest`
+
+### ✅ `Request` (Web Standard)
+This is the **native Fetch API’s** `Request` object – just like in the browser or Node.js.  
+It's used in **Route Handlers** (like `GET`, `POST`, etc.) inside `app/api/*`.
+
+```ts
+// app/api/hello/route.ts
+export async function GET(request: Request) {
+  const url = request.url;
+  return Response.json({ message: "Hello World" });
+}
+```
+
+### ✅ `NextRequest` (Next.js Extension)
+This **extends the native Request** with extra Next.js-specific goodies like:
+- `cookies` – to easily read cookies (`request.cookies.get("token")`)
+- `nextUrl` – full parsed URL with pathname, searchParams, etc.
+- `geo` – for geolocation (on Vercel)
+- `ip` – get user's IP (on Vercel)
+  
+It is used **only in middleware**, or sometimes in edge functions.
+
+```ts
+// middleware.ts
+import { NextRequest, NextResponse } from "next/server";
+
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get("token");
+  const lang = request.nextUrl.searchParams.get("lang");
+  return NextResponse.next();
+}
+```
+
+---
+
+### 🧠 Summary: When to Use?
+
+| Context           | Use        | Why?                                    |
+|-------------------|------------|------------------------------------------|
+| Route Handlers    | `Request`  | Native, no need for Next-specific logic  |
+| Middleware        | `NextRequest` | Access Next-specific features (`nextUrl`, cookies, IP) |
+| Edge Functions    | `NextRequest` | Same as above                            |
+
+---
+
+## 🔵 `Response` vs `NextResponse`
+
+### ✅ `Response` (Web Standard)
+This is the standard Web Response used for returning data from route handlers, like `GET()`:
+
+```ts
+export async function GET() {
+  return new Response("Hello", {
+    status: 200,
+    headers: {
+      "Content-Type": "text/plain",
+    },
+  });
+}
+```
+
+Or using the utility method:
+
+```ts
+return Response.json({ data: "value" });
+```
+
+> Perfect for route handlers – clean, standard, and enough in most cases.
+
+---
+
+### ✅ `NextResponse` (Next.js Extension)
+This is used **only in middleware** and includes enhancements:
+- `NextResponse.redirect(url)`
+- `NextResponse.rewrite(url)`
+- Cookie manipulation: `response.cookies.set()` and `get()`
+- Modifying headers more easily
+
+```ts
+// middleware.ts
+import { NextResponse } from "next/server";
+
+export function middleware(request: NextRequest) {
+  const response = NextResponse.next();
+  response.cookies.set("visited", "true");
+  return response;
+}
+```
+
+---
+
+### 🧠 Summary: When to Use?
+
+| Context         | Use           | Why?                                           |
+|------------------|----------------|------------------------------------------------|
+| Route Handlers   | `Response`     | Simpler, native, works well in API routes      |
+| Middleware       | `NextResponse` | Needed for rewrite, redirect, set headers/cookies |
+| Advanced headers | `NextResponse` | If modifying response during middleware phase  |
+
+---
+
+## 🔁 Real-World Example Side-by-Side
+
+### ✅ In a Route Handler
+
+```ts
+// app/api/user/route.ts
+export async function GET(request: Request) {
+  return Response.json({ user: "Skyy" });
+}
+```
+
+✅ Works fine because we don’t need any Next.js-specific feature here.
+
+---
+
+### ✅ In Middleware
+
+```ts
+// middleware.ts
+import { NextRequest, NextResponse } from "next/server";
+
+export function middleware(request: NextRequest) {
+  const isLoggedIn = request.cookies.get("token");
+
+  if (!isLoggedIn) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  return NextResponse.next();
+}
+```
+
+Here, `NextRequest` gives access to cookies and `NextResponse.redirect()` simplifies redirection.
+
+---
+
+## 🧪 BONUS TIP: Want cookies in route handlers?
+
+Use:
+
+```ts
+import { cookies } from "next/headers";
+
+export async function GET() {
+  const cookieStore = cookies();
+  const userToken = cookieStore.get("token")?.value;
+  return Response.json({ token: userToken });
+}
+```
+
+---
+
+## 🔚 TL;DR Cheat Sheet
+
+| Feature             | Request       | NextRequest    | Response       | NextResponse    |
+|---------------------|---------------|----------------|----------------|-----------------|
+| Based On            | Web API       | Extends Request | Web API       | Extends Response |
+| Available In        | Route Handlers| Middleware      | Route Handlers| Middleware       |
+| Can use `nextUrl`   | ❌            | ✅              | ❌             | ❌              |
+| Can access cookies  | ❌ (manually) | ✅              | ❌             | ✅              |
+| Can redirect        | ❌            | ❌              | ✅ (manual)    | ✅              |
+| Modify headers      | ✅            | ✅              | ✅             | ✅ (easier)     |
+
+---
